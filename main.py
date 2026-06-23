@@ -1,49 +1,53 @@
 import ollama
 
-MODEL_NAME='phi3'
+# 1. Model
+MODEL_NAME = 'phi3'
 
-def generate_marketing_copy_local(product_name: str, product_desc: str, platform: str, tone: str, temperature: float = 0.7, top_p: float = 0.9):
+# 2. Memory Setting
+chat_history = []
+MAX_HISTORY_TURNS = 15
 
-    prompt_template = f"""
-    You are an expert copywriter. Your task is to write a highly engaging marketing copy.
-    
-    Product Name: {product_name}
-    Product Description: {product_desc}
-    Target Platform: {platform}
-    Desired Tone: {tone}
-    
-    Requirements:
-    - Tailor the formatting, length, and style specifically for {platform}.
-    - Maintain a {tone} tone throughout the text.
-    - Include relevant call-to-actions (CTAs) or hashtags if appropriate for the platform.
-    
-    Marketing Copy:
-    """
+print(f"🤖 [DecodeLabs] Stateful LOCAL Chatbot ({MODEL_NAME}) Loaded successfully!")
+print('Write EXIT to ending the session\n' + "-"*40)
 
-    response=ollama.generate(
-        model=MODEL_NAME,
-        prompt=prompt_template,
-        options={'temperature':temperature,
-                 'top_p':top_p})
-    return response['response']
+while True:
+    # 3. Structural Validation Gate
+    user_input = input('You: ').strip()
 
-if __name__ == "__main__":
-    name = "SmartDesk 2.0"
-    desc = "An ergonomic standing desk with built-in wireless charging and automated posture reminders."
-    target_platform = "LinkedIn"
-    desired_tone = "Professional and Innovative"
-    
-    print("Generating copy locally via Ollama...\n")
-    result = generate_marketing_copy_local(
-        product_name=name,
-        product_desc=desc,
-        platform=target_platform,
-        tone=desired_tone,
-        temperature=0.9,
-        top_p=0.9
-    )
-    
-    print("="*40)
-    print(f"Generated Copy for {target_platform}:")
-    print("="*40)
-    print(result)
+    if user_input.upper() == 'EXIT':
+        print('Sess/ion Ended.')
+        break
+    if not user_input:
+        print('⚠️ [Guard Gate]: The Request Is Empty! The Sending Is Blocked')
+        continue
+
+    # 4. Ingest & Append
+    chat_history.append({
+        "role": "user",
+        "content": user_input
+    })
+
+    try:
+        # 5. Transmit
+        response = ollama.chat(
+            model=MODEL_NAME,
+            messages=chat_history
+        )
+        
+        model_reply = response['message']['content']
+
+        print(f"\nAI: {model_reply}\n" + "-"*40)
+        
+        # 7. Append AI Reply 
+        chat_history.append({
+            "role": "assistant", 
+            "content": model_reply
+        })
+
+        # 8. Memory Management
+        if len(chat_history) > (MAX_HISTORY_TURNS * 2):
+            chat_history = chat_history[2:]
+
+    except Exception as e:
+        print(f"❌ Error Occurred: {e}")
+        chat_history.pop()
